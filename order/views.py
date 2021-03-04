@@ -7,7 +7,7 @@ from django.db    import transaction
 
 from user.models    import ShippingInformation
 from product.models import ProductSize
-from order.models   import Bid, OrderStatus, Order
+from order.models   import Ask, Bid, OrderStatus, Order
 from user.utils     import login_decorator
 
 ORDER_STATUS_CURRENT = 'current'
@@ -153,3 +153,126 @@ class BuyView(View):
         except ProductSize.DoesNotExist:
             return JsonResponse({'message':'ASK_DOES_NOT_EXIST'}, status=404)
 
+
+class SellView(View):
+    @login_decorator
+    def get(self, request, product_id):
+        size_id      = request.GET.get('size')
+        user         = request.user
+
+        if not ProductSize.objects.filter(product_id=product_id, size_id=size_id).exists():
+            return JsonResponse({'message':'PRODUCT_SIZE_DOES_NOT_EXIST'}, status=404)
+
+        product      = Product.objects.get(id = product_id)
+        size         = Size.objects.get(id = size_id)
+        product_size = ProductSize.objects.get(product_id = product_id, size_id= size)
+        image        = Image.objects.get(product_id = product_id)
+        highest_bid  = product_size.bid_set.filter(order_status__name = ORDER_STATUS_CURRENT).order_by('-price').first() 
+        lowest_ask   = product_size.ask_set.filter(order_status__name = ORDER_STATUS_CURRENT).order_by('price').first()
+
+        product_sell = {
+                'id'          : product_id,
+                'name'        : product.name,
+                'highestBid'  : highest_bid.price if highest_bid else 0,
+                'lowestAsk'   : lowest_ask.price if lowest_ask else 0,
+                'size'        : size.name,
+                'image'       : image.image_url,
+        }
+
+        user = ShippingInformation.objects.filter(user_id = user.id).last()
+        user_info = {
+                'name'             : user.name if user else None,
+                'country'          : user.country if user else None,
+                'primaryAddress'   : user.primary_address if user else None,
+                'secondaryAddress' : user.secondary_address if user else None,
+                'city'             : user.city if user else None,
+                'state'            : user.state if user else None,
+                'postalCode'       : user.postal_code if user else None,
+                'phoneNumber'      : user.phone_number if user else None,
+        } 
+
+        return JsonResponse({'data' : {
+                        'product'      : product_sell,
+                        'shippingInfo' : user_info,
+                        }}, status=200)
+
+    @login_decorator
+    def post(self, request, product_id):
+        try: 
+            data        = json.loads(request.body)
+            user        = request.user
+            size_id     = request.GET.get('size')
+            is_ask      = data.get('isAsk', None)
+            price       = data.get('price', None)
+            date        = data.get('expirationDate', None)
+            total_price = data.get('totalPrice', None)
+
+            if not ProductSize.objects.filter(product_id = product_id, size_id = size_id).exists():
+                return JsonResponse({'message':'PRODUCT_DOSE_NOT_EXISTS'}, status=404)
+
+            if not(is_ask == '0' or is_ask == '1'):
+                return JsonResponse({'message':'INVALID_VALUE'})
+
+            product      = Product.objects.get(id = product_id)
+            product_size = ProductSize.objects.get(product_id = product_id, size_id = size_id)
+            highest_bid  = Bid.objects.filter(product_size = product_size, order_status__name =\
+                            ORDER_STATUS_CURRENT, price = price).order_by('created_at').first()
+            order_status_pending = OrderStatus.objects.get(name = ORDER_STATUS_PENDING)
+            order_status_current = OrderStatus.objects.get(name = ORDER_STATUS_CURRENT)
+            date         = timezone.localtime() - timedelta(days=int(date))
+
+            with transaction.atomic():
+                if bool(int(is_ask)):
+                    if not date:
+                        raise KeyError 
+
+                if not ShippingInformation.objects.filter(user_id = user.id).exists():
+                    ShippingInformation.objects.create(
+                            user_id           = user.id,
+                            name              = data['name'],
+                            country           = data['country'],
+                            primary_address   = data['primaryAddress'],
+                            secondary_address = data['secondaryAddress'],
+                            city              = data['city'],
+                            state             = data['state'],
+                            postal_code       = data['postalCode'],
+                            phone_number      = data['phoneNumber'],
+                    )
+
+                shippinginfo = ShippingInformation.objects.filter(user_id = user.id).last()
+
+                if is_ask:
+                    Ask.objects.get_or_create(
+                            user                = user,
+                            product_size        = product_size,
+                            price               = price,
+                            expiration_date     = date,
+                            order_status        = order_status_current,
+                            shipping_information = shippinginfo,
+                    )
+
+                else:
+                    highest_bid.order_status    = OrderStatus.objects.get(name = ORDER_STATUS_PENDING)
+                    highest_bid.total_price     = total_price 
+                    highest_bid.order_number    = datetime.now().strftime('B%y%m%d' + str(highest_bid.id).zfill(5))
+                    highest_bid.matched_at      = datetime.now()
+                    highest_bid.save()
+
+                    ask = Ask.objects.create(
+                            user                = user,
+                            product_size        = product_size,
+                            price               = price,
+                            order_status        = order_status_pending,
+                            total_price         = total_price,
+                            matched_at          = datetime.now(),
+                            shipping_information = shippinginfo,
+                    )
+                    Order.objects.create(
+                            bid_id = highest_bid,
+                            ask_id = ask,
+                    )
+
+                return JsonResponse({'message':'SUCCESS'}, status=201)
+
+        except KeyError:
+            return JsonResponse({'message':'KEY_ERROR'}, status=400)
