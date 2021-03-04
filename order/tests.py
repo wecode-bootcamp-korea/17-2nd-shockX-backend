@@ -7,13 +7,235 @@ from unittest.mock  import patch, MagicMock
 
 from user.models    import SellerLevel, User, ShippingInformation
 from product.models import Product, Size, ProductSize, Image
-from order.models   import Bid, Ask, Order, OrderStatus
+from order.models   import Ask, Order, OrderStatus, Bid
 from my_settings    import SECRET_KEY, ALGORITHM
 
 ORDER_STATUS_CURRENT = 'current'
 ORDER_STATUS_PENDING = 'pending'
 
 client = Client()
+
+class SellTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        seller_level = SellerLevel.objects.create(
+            name            = '1',
+            transaction_fee = 9.5
+        )
+
+        user = User.objects.create(
+            email        = 'binogood68@gmail.com',
+            name         = 'binogood',
+            seller_level = seller_level
+        )
+
+        cls.product = Product.objects.create(
+            name          = 'Jordan',
+            model_number  = '97silver',
+            ticker_number = '97sv',
+            color         = 'silver bullet',
+            description   = 'Gooood',
+            retail_price  = 30000.00,
+            release_date  = '2020-11-10'
+        )
+
+        cls.size = Size.objects.create(
+            name = '1'
+        )
+
+        product_size = ProductSize.objects.create(
+            product = cls.product,
+            size    = cls.size
+        )
+
+        Image.objects.create(
+            image_url = 'a.jpg',
+            product   = cls.product
+        )
+
+        cls.order_status_current = OrderStatus.objects.create(
+            name = 'current'
+        )
+
+        cls.order_status_pending = OrderStatus.objects.create(
+            name = 'pending'
+        )
+
+        shipping_information = ShippingInformation.objects.create(
+            name            = 'bongbong',
+            country         = 'InSideOut',
+            primary_address = 'bongbong_station',
+            city            = 'dream',
+            postal_code     = '123456',
+            phone_number    = '01012341234',
+            user            = user
+        )
+
+        cls.bid = Bid.objects.create(
+            product_size         = product_size,
+            price                = 100.00,
+            user                 = user,
+            expiration_date      = '2020-03-31',
+            order_status         = cls.order_status_current,
+            shipping_information = shipping_information
+        )
+
+        Ask.objects.create(
+            product_size         = product_size,
+            price                = 100.00,
+            user                 = user,
+            expiration_date      = '2020-03-31',
+            order_status         = cls.order_status_current,
+            shipping_information = shipping_information
+        )
+
+        cls.token = jwt.encode({'email':user.email}, SECRET_KEY, algorithm=ALGORITHM)
+
+    def tearDown(self):
+        SellerLevel.objects.all().delete()
+        User.objects.all().delete()
+        Product.objects.all().delete()
+        Size.objects.all().delete()
+        ProductSize.objects.all().delete()
+        Image.objects.all().delete()
+        OrderStatus.objects.all().delete()
+        ShippingInformation.objects.all().delete()
+        Ask.objects.all().delete()
+        Bid.objects.all().delete()
+
+    def test_sell_get_success(self):
+        headers = {'HTTP_Authorization':self.token}
+
+        response = client.get(f'/order/sell/{self.product.id}?size={self.size.id}', **headers)
+
+        self.assertEqual(response.json()['data']['product']['id'], 1)
+        self.assertEqual(response.json()['data']['product']['name'], "Jordan")
+        self.assertEqual(response.json()['data']['product']['lowestAsk'], "100.00")
+        self.assertEqual(response.json()['data']['product']['highestBid'], "100.00")
+        self.assertEqual(response.json()['data']['product']['size'], "1")
+        self.assertEqual(response.json()['data']['product']['image'], "a.jpg")
+        self.assertEqual(response.json()['data']['shippingInfo']['name'], "bongbong")
+        self.assertEqual(response.json()['data']['shippingInfo']['city'], "dream")
+        self.assertEqual(response.json()['data']['shippingInfo']['country'], "InSideOut")
+        self.assertEqual(response.json()['data']['shippingInfo']['postalCode'], "123456")
+        self.assertEqual(response.json()['data']['shippingInfo']['phoneNumber'], "01012341234")
+        self.assertEqual(response.status_code, 200)
+
+    def test_sell_get_does_not_exist2(self):
+        headers = {'HTTP_Authorization':self.token}
+
+        response = client.get(f'/order/sell/{self.product.id}', **headers)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {'message':'PRODUCT_SIZE_DOES_NOT_EXIST'})
+
+    def test_sell_get_does_not_exist1(self):
+        headers = {'HTTP_Authorization':self.token}
+
+        response = client.get('/order/sell/12?size=34', **headers)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {'message':'PRODUCT_SIZE_DOES_NOT_EXIST'})
+
+    def test_sell_get_does_not_exist2(self):
+        headers = {'HTTP_Authorization':self.token}
+
+        response = client.get(f'/order/sell/{self.product.id}', **headers)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {'message':'PRODUCT_SIZE_DOES_NOT_EXIST'})
+
+    def test_sell_post_is_ask_true_success(self):
+        headers = {'HTTP_Authorization':self.token}
+
+        payload = jwt.decode(self.token, SECRET_KEY, algorithms=ALGORITHM)
+        user = User.objects.get(email=payload['email'])
+
+        data = {
+            "isAsk"            : "True",
+            "price"            : self.bid.price,
+            "name"             : "bongbong",
+            "country"          : "InSideOut",
+            "primaryAddress"   : "bongbong_station",
+            "secondaryAddress" : "9 and 3/4",
+            "city"             : "dream",
+            "postalCode"       : "123456",
+            "phoneNumber"      : "01012341234",
+            "expirationDate"   : "3"
+        }
+
+        response = client.post(f'/order/sell/{self.product.id}?size={self.size.id}',\
+                json.dumps(data), content_type='application/json', **headers)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {'message':'SUCCESS'})
+
+    def test_sell_post_is_ask_false_success(self):
+        headers = {'HTTP_Authorization':self.token}
+
+        payload = jwt.decode(self.token, SECRET_KEY, algorithms=ALGORITHM)
+        user = User.objects.get(email=payload['email'])
+
+        data = {
+            "isAsk"            : "True",
+            "price"            : self.bid.price,
+            "name"             : "bongbong",
+            "country"          : "InSideOut",
+            "primaryAddress"   : "bongbong_station",
+            "secondaryAddress" : "9 and 3/4",
+            "city"             : "dream",
+            "postalCode"       : "123456",
+            "phoneNumber"      : "01012341234",
+            "expirationDate"   : "3",
+            "totalPrice"       : "125.00"
+        }
+
+        response = client.post(f'/order/sell/{self.product.id}?size={self.size.id}',\
+                json.dumps(data), content_type='application/json', **headers)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json(), {'message':'SUCCESS'})
+
+    def test_sell_post_product_size_does_not_exist1(self): 
+        headers = {'HTTP_Authorization':self.token}
+
+        response = client.get('/order/sell/12?size=34', **headers)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {'message':'PRODUCT_SIZE_DOES_NOT_EXIST'})
+
+    def test_sell_post_product_size_does_not_exist2(self):
+        headers = {'HTTP_Authorization':self.token}
+
+        response = client.get(f'/order/sell/{self.product.id}', **headers)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.json(), {'message':'PRODUCT_SIZE_DOES_NOT_EXIST'})
+
+    def test_sell_post_is_ask_key_error(self):
+        headers = {'HTTP_Authorization':self.token}
+
+        payload = jwt.decode(self.token, SECRET_KEY, algorithms=ALGORITHM)
+        user = User.objects.get(email=payload['email'])
+
+        data = {
+            "price"            : self.ask.price,
+            "name"             : "sua",
+            "country"          : "South Korea",
+            "primaryAddress"   : "Gangnam-gu",
+            "secondaryAddress" : "427, Teheran-ro",
+            "city"             : "Seoul",
+            "state"            : "Seoul",
+            "postalCode"       : "123456",
+            "phoneNumber"      : "01012341234",
+            "expirationDate"   : "3"
+        }
+
+        response = client.post(f'/order/buy/{self.product.id}?size={self.size.id}',\
+                json.dumps(data), content_type='application/json', **headers)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message':'KEY_ERROR'})
 
 class BuyTest(TestCase):
     @classmethod
@@ -453,4 +675,3 @@ class BuyTest(TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {'message':'ASK_DOES_NOT_EXIST'})
-        
