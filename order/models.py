@@ -16,6 +16,11 @@ class Ask(models.Model):
     created_at      = models.DateTimeField(auto_now_add=True)
     updated_at      = models.DateTimeField(auto_now=True)
     expiration_date = models.DateTimeField()
+    order_status    = models.ForeignKey('OrderStatus', on_delete=models.CASCADE)
+    matched_at      = models.DateTimeField(null=True)
+    total_price     = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    order_number    = models.CharField(null=True, max_length=100)
+    
 
     class Meta:
         db_table = 'asks'
@@ -27,6 +32,10 @@ class Bid(models.Model):
     created_at      = models.DateTimeField(auto_now_add=True)
     updated_at      = models.DateTimeField(auto_now=True)
     expiration_date = models.DateTimeField()
+    order_status    = models.ForeignKey('OrderStatus', on_delete=models.CASCADE)
+    matched_at      = models.DateTimeField(null=True)
+    total_price     = models.DecimalField(max_digits=10, decimal_places=2, null=True)
+    order_number    = models.CharField(null=True, max_length=100)
 
     class Meta:
         db_table = 'bids'
@@ -44,16 +53,8 @@ class OrderType(models.Model):
         db_table = 'order_types'
 
 class Order(models.Model):
-    user         = models.ForeignKey('user.User', on_delete=models.CASCADE)
-    order_status = models.ForeignKey('OrderStatus', on_delete=models.CASCADE)
     ask          = models.ForeignKey('Ask', on_delete=models.CASCADE, null=True)
     bid          = models.ForeignKey('Bid', on_delete=models.CASCADE, null=True)
-    order_type   = models.ForeignKey('OrderType', on_delete=models.CASCADE)
-    matched_at   = models.DateTimeField(null=True)
-    created_at   = models.DateTimeField(auto_now_add=True)
-    order_number = models.CharField(max_length=300, null=True)
-    total_price  = models.DecimalField(max_digits=10, decimal_places=2)
 
     class Meta:
         db_table = 'orders'
-
