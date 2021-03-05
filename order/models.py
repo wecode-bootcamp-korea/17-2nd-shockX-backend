@@ -21,7 +21,6 @@ class Ask(models.Model):
     total_price     = models.DecimalField(max_digits=10, decimal_places=2, null=True)
     order_number    = models.CharField(null=True, max_length=100)
     
-
     class Meta:
         db_table = 'asks'
 
@@ -45,12 +44,6 @@ class OrderStatus(models.Model):
 
     class Meta:
         db_table = 'order_status'
-
-class OrderType(models.Model):
-    name = models.CharField(max_length=45)
-
-    class Meta:
-        db_table = 'order_types'
 
 class Order(models.Model):
     ask          = models.ForeignKey('Ask', on_delete=models.CASCADE, null=True)
