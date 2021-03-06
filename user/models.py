@@ -17,14 +17,13 @@ class SellerLevel(models.Model):
     class Meta:
         db_table = 'seller_levels'
 
-class ShippingInfomation(models.Model):
-    first_name        = models.CharField(max_length=50)
-    last_name         = models.CharField(max_length=50)
+class ShippingInformation(models.Model):
+    name              = models.CharField(max_length=50)
     country           = models.CharField(max_length=50)
     primary_address   = models.CharField(max_length=200)
     secondary_address = models.CharField(max_length=200, null=True)
     city              = models.CharField(max_length=45)
-    state             = models.CharField(max_length=45)
+    state             = models.CharField(max_length=45, null=True)
     postal_code       = models.CharField(max_length=45)
     phone_number      = models.CharField(max_length=45)
     created_at        = models.DateTimeField(auto_now_add=True)
@@ -32,5 +31,5 @@ class ShippingInfomation(models.Model):
     user              = models.ForeignKey('User', on_delete=models.CASCADE)
 
     class Meta:
-        db_table = 'shipping_infomations'
+        db_table = 'shipping_informations'
 
