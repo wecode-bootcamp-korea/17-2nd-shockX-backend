@@ -151,7 +151,7 @@ class ProductDetailTest(TestCase):
         OrderStatus.objects.all().delete()
 
     def test_product_detail_get_success(self):
-        response = client.get(f'/product/detail/{self.product.id}')
+        response = client.get(f'/product/{self.product.id}')
 
         self.assertEqual(response.json()['results']['product_name'],'hehe')
         self.assertEqual(response.json()['results']['product_ticker'],'AJ6-BI19')
@@ -176,7 +176,7 @@ class ProductDetailTest(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_product_detail_not_found(self):
-        response = client.get('/product/detail/999')
+        response = client.get('/product/999')
         self.assertEqual(response.json(),
             {
                 'message':'PAGE_NOT_FOUND'
