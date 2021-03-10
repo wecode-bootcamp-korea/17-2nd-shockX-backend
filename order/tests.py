@@ -250,6 +250,7 @@ class BuyTest(TestCase):
             seller_level = seller_level
         )
         cls.product = Product.objects.create(
+            id            = 1,
             name          = 'Yordan',
             model_number  = 'A1234',
             ticker_number = 'AJ89',
@@ -262,6 +263,7 @@ class BuyTest(TestCase):
             name = '1'
         )
         product_size = ProductSize.objects.create(
+            id = 1,
             product = cls.product,
             size    = cls.size
         )
@@ -444,7 +446,7 @@ class BuyTest(TestCase):
         user = User.objects.get(email=payload['email'])
         
         data = {
-                "isBid"            : "3",
+            "isBid"            : "3",
             "price"            : self.ask.price,
             "name"             : "sua",
             "country"          : "South Korea",
@@ -675,3 +677,317 @@ class BuyTest(TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {'message':'ASK_DOES_NOT_EXIST'})
+        
+class BuyStatusTest(TestCase):
+    maxDiff = None
+    @classmethod
+    def setUpTestData(cls):
+        SellerLevel.objects.create(
+            id              = 1,
+            name            = '1',
+            transaction_fee = 9.5
+        )
+        user = User.objects.create(
+            email           = 'shockx@wecode.com',
+            name            = 'shocking',
+            seller_level_id = 1
+        )
+        product = Product.objects.create(
+            name          = 'Yordan',
+            model_number  = 'A1234',
+            ticker_number = 'AJ89',
+            color         = 'black',
+            description   = 'Gooood',
+            retail_price  = 300.00,
+            release_date  = '2020-11-10'
+        )
+        Size.objects.create(
+            name = '1'
+        )
+        Size.objects.create(
+            name = '2'
+        )
+        product_size = ProductSize.objects.create(
+            product_id = 1,
+            size_id    = 1
+        )
+        product_size = ProductSize.objects.create(
+            product_id = 1,
+            size_id    = 2
+        )
+        Image.objects.create(
+            image_url  = 'a.jpg',
+            product_id = 1
+        )
+        OrderStatus.objects.create(
+            name = 'current'
+        )
+        OrderStatus.objects.create(
+            name = 'pending'
+        )
+        ShippingInformation.objects.create(
+            name            = 'shock',
+            country         = 'South Korea',
+            primary_address = 'Gangnam-gu',
+            city            = 'Seoul',
+            postal_code     = '123456',
+            phone_number    = '123123123',
+            user_id         = 1
+        )
+        Bid.objects.create(
+            product_size_id         = 1,
+            price                   = 100.00,
+            user_id                 = 1,
+            expiration_date         = '2020-03-31',
+            order_status_id         = 1,
+            shipping_information_id = 1
+        )
+        Ask.objects.create(
+            product_size_id         = 1,
+            price                   = 100.00,
+            user_id                 = 1,
+            expiration_date         = '2020-03-31',
+            order_status_id         = 1,
+            shipping_information_id = 1
+        )
+        bid = Bid.objects.create(
+            product_size_id         = 2,
+            price                   = 100.00,
+            user_id                 = 1,
+            matched_at              = '2020-11-10',
+            order_status_id         = 2,
+            shipping_information_id = 1,
+            total_price             = 150.00
+        )
+        bid.order_number = 'B0001'
+        bid.save()
+        ask = Ask.objects.create(
+            product_size_id         = 2,
+            price                   = 100.00,
+            user_id                 = 1,
+            matched_at              = '2020-11-10',
+            order_status_id         = 2,
+            shipping_information_id = 1,
+            total_price             = 150.00
+        )
+        ask.order_number = 'A0001'
+        ask.save()
+        Order.objects.create(
+            bid_id = 2,
+            ask_id = 2
+        )
+
+        cls.token = jwt.encode({'email':user.email}, SECRET_KEY, algorithm=ALGORITHM)
+
+    def tearDown(self):
+        SellerLevel.objects.all().delete()
+        User.objects.all().delete()
+        Product.objects.all().delete()
+        Size.objects.all().delete()
+        ProductSize.objects.all().delete()
+        Image.objects.all().delete()
+        OrderStatus.objects.all().delete()
+        ShippingInformation.objects.all().delete()
+        Bid.objects.all().delete()
+        Ask.objects.all().delete()
+
+    def test_buy_orderstaus_get_success(self):
+        headers = {'HTTP_Authorization':self.token}
+        
+        response = client.get('/order/account/buying', **headers)
+        
+        self.assertEqual(response.json(),
+            {
+                "buying": {
+                    "current":[
+                        {
+                            "name"       : "Yordan",
+                            "size"       : "1",
+                            "image"      : "a.jpg",
+                            "bidPrice"   : 100,
+                            "highestBid" : 100,
+                            "lowestAsk"  : 100,
+                            "expires"    : "2020/03/31"
+                        }
+                    ],
+                    "pending":[
+                        {
+                            "name"         : "Yordan",
+                            "size"         : "2",
+                            "image"        : "a.jpg",
+                            "price"        : 100,
+                            "orderNumber"  : "B0001",
+                            "purchaseDate" : "2020/11/10",
+                        }
+                    ],
+                    "username" : "shocking"
+                }
+            }
+                
+            )
+        self.assertEqual(response.status_code, 200)
+
+class SellStatusTest(TestCase):
+    maxDiff = None
+    @classmethod
+    def setUpTestData(cls):
+        SellerLevel.objects.create(
+            id              = 1,
+            name            = '1',
+            transaction_fee = 9.5
+        )
+        user = User.objects.create(
+            id              = 1,
+            email           = 'shockx@wecode.com',
+            name            = 'shocking',
+            seller_level_id = 1
+        )
+        product = Product.objects.create(
+            id            = 1,
+            name          = 'Yordan',
+            model_number  = 'A1234',
+            ticker_number = 'AJ89',
+            color         = 'black',
+            description   = 'Gooood',
+            retail_price  = 300.00,
+            release_date  = '2020-11-10'
+        )
+        Size.objects.create(
+            id   = 1,
+            name = '1'
+        )
+        Size.objects.create(
+            id   = 2,
+            name = '2'
+        )
+        product_size = ProductSize.objects.create(
+            id         = 1,
+            product_id = 1,
+            size_id    = 1
+        )
+        product_size = ProductSize.objects.create(
+            id         = 2,
+            product_id = 1,
+            size_id    = 2
+        )
+        Image.objects.create(
+            id         = 1,
+            image_url  = 'a.jpg',
+            product_id = 1
+        )
+        OrderStatus.objects.create(
+            id   = 1,
+            name = 'current'
+        )
+        OrderStatus.objects.create(
+            id   = 2,
+            name = 'pending'
+        )
+        ShippingInformation.objects.create(
+            id              = 1,
+            name            = 'shock',
+            country         = 'South Korea',
+            primary_address = 'Gangnam-gu',
+            city            = 'Seoul',
+            postal_code     = '123456',
+            phone_number    = '123123123',
+            user_id         = 1
+        )
+        Bid.objects.create(
+            id                      = 1,
+            product_size_id         = 1,
+            price                   = 100.00,
+            user_id                 = 1,
+            expiration_date         = '2020-03-31',
+            order_status_id         = 1,
+            shipping_information_id = 1
+        )
+        Ask.objects.create(
+            id                      = 1,
+            product_size_id         = 1,
+            price                   = 100.00,
+            user_id                 = 1,
+            expiration_date         = '2020-03-31',
+            order_status_id         = 1,
+            shipping_information_id = 1
+        )
+        bid = Bid.objects.create(
+            id                      = 2,
+            product_size_id         = 2,
+            price                   = 100.00,
+            user_id                 = 1,
+            matched_at              = '2020-11-10',
+            order_status_id         = 2,
+            shipping_information_id = 1,
+            total_price             = 150.00
+        )
+        bid.order_number = 'B0001'
+        bid.save()
+        ask = Ask.objects.create(
+            id                      = 2,
+            product_size_id         = 2,
+            price                   = 100.00,
+            user_id                 = 1,
+            matched_at              = '2020-11-10',
+            order_status_id         = 2,
+            shipping_information_id = 1,
+            total_price             = 150.00
+        )
+        ask.order_number = 'A0001'
+        ask.save()
+        Order.objects.create(
+            id     = 1,
+            bid_id = 2,
+            ask_id = 2
+        )
+
+        cls.token = jwt.encode({'email':user.email}, SECRET_KEY, algorithm=ALGORITHM)
+
+    def tearDown(self):
+        SellerLevel.objects.all().delete()
+        User.objects.all().delete()
+        Product.objects.all().delete()
+        Size.objects.all().delete()
+        ProductSize.objects.all().delete()
+        Image.objects.all().delete()
+        OrderStatus.objects.all().delete()
+        ShippingInformation.objects.all().delete()
+        Bid.objects.all().delete()
+        Ask.objects.all().delete()
+
+    def test_sell_orderstaus_get_success(self):
+        headers = {'HTTP_Authorization':self.token}
+        
+        response = client.get('/order/account/selling', **headers)
+        
+        self.assertEqual(response.json(),
+            {
+                "selling": {
+                    "current":[
+                        {
+                            "name"       : "Yordan",
+                            "size"       : "1",
+                            "image"      : "a.jpg",
+                            "askPrice"   : 100,
+                            "highestBid" : 100,
+                            "lowestAsk"  : 100,
+                            "expires"    : "2020/03/31"
+                        }
+                    ],
+                    "pending":[
+                        {
+                            "name"         : "Yordan",
+                            "size"         : "2",
+                            "image"        : "a.jpg",
+                            "price"        : 100,
+                            "orderNumber"  : "A0001",
+                            "purchaseDate" : "2020/11/10",
+                        }
+                    ],
+                    "username" : "shocking"
+                }
+            }
+
+            )
+        self.assertEqual(response.status_code, 200)
+
