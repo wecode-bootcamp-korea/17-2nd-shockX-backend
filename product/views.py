@@ -12,7 +12,6 @@ ORDER_STATUS_HISTORY   = 'history'
 
 class ProductListView(View):
     def get(self, request):
-        sizes         = Size.objects.all()
         lowest_price  = request.GET.get('lowest')
         highest_price = request.GET.get('highest')
         limit         = int(request.GET.get('limit', 0))
@@ -21,15 +20,18 @@ class ProductListView(View):
         
         if not size:
             products = Product.objects.all()
-       
-            if lowest_price and highest_price:
-                products = Product.objects.annotate(min_price=Min('productsize__ask__price')).filter(min_price__gte=lowest_price, min_price__lte=highest_price, productsize__ask__order_status__name=ORDER_STATUS_CURRENT)
-            
-            elif lowest_price:
-                products = Product.objects.annotate(min_price=Min('productsize__ask__price')).filter(min_price__lte=lowest_price, productsize__ask__order_status__name=ORDER_STATUS_CURRENT)
+            price_condition = Q()
 
-            elif highest_price:
-                products = Product.objects.annotate(min_price=Min('productsize__ask__price')).filter(min_price__gte=highest_price, productsize__ask__order_status__name=ORDER_STATUS_CURRENT)
+            if lowest_price and highest_price:
+                price_condition.add(Q(min_price__gte=lowest_price) & Q(min_price__lte=highest_price) & Q(productsize__ask__order_status__name=ORDER_STATUS_CURRENT), Q.AND)
+
+            if lowest_price and not highest_price:
+                price_condition.add(Q(min_price__lte=lowest_price) & Q(productsize__ask__order_status__name=ORDER_STATUS_CURRENT), Q.AND)
+
+            if highest_price and not lowest_price:
+                price_condition.add(Q(min_price__gte=highest_price) & Q(productsize__ask__order_status__name=ORDER_STATUS_CURRENT), Q.AND)
+            
+            products = Product.objects.annotate(min_price=Min('productsize__ask__price')).filter(price_condition)
 
             total_products = [
                 {'productId'   : product.id,
@@ -38,27 +40,32 @@ class ProductListView(View):
                 'price'        : min([int(ask.price) for ask in Ask.objects.filter(
                             product_size__product_id = product.id)])} 
                     for product in products][offset:offset+limit]
-            
+
             size_categories = [
                     {
                         'size'     : size.id,
                         'sizeName' : size.name
                         }
-                    for size in sizes]
+                    for size in Size.objects.all()]
 
             return JsonResponse({'products': total_products, 'size_categories': size_categories}, status=200)
 
-        products = Product.objects.filter(productsize__size_id=size)
+        price_condition = Q()
 
         if lowest_price and highest_price:
-            products = Product.objects.annotate(min_price=Min('productsize__ask__price')).filter(min_price__gte=lowest_price, min_price__lte=highest_price, productsize__ask__order_status__name=ORDER_STATUS_CURRENT, productsize__size_id=size)
+            price_condition.add(Q(min_price__gte=lowest_price) & Q(min_price__lte=highest_price) & Q(productsize__ask__order_status__name=ORDER_STATUS_CURRENT) & Q(productsize__size_id=size), Q.AND)
         
-        elif lowest_price:
-            products = Product.objects.annotate(min_price=Min('productsize__ask__price')).filter(min_price__lte=lowest_price, productsize__ask__order_status__name=ORDER_STATUS_CURRENT, productsize__size_id=size)
+        if lowest_price and not highest_price:
+            price_condition.add(Q(min_price__lte=lowest_price) & Q(productsize__ask__order_status__name=ORDER_STATUS_CURRENT) & Q(productsize__size_id=size), Q.AND)
 
-        elif highest_price:
-            products = Product.objects.annotate(min_price=Min('productsize__ask__price')).filter(min_price__gte=highest_price, productsize__ask__order_status__name=ORDER_STATUS_CURRENT, productsize__size_id=size)
+        if highest_price and not lowest_price:
+            price_condition.add(Q(min_price__gte=highest_price) & Q(productsize__ask__order_status__name=ORDER_STATUS_CURRENT) & Q(productsize__size_id=size), Q.AND)
+            
+        if not highest_price and not lowest_price:
+            price_condition.add(Q(productsize__size_id=size), Q.AND)
 
+        products = Product.objects.annotate(min_price=Min('productsize__ask__price')).filter(price_condition)
+        
         total_products = [
             {'productId'   : product.id,
             'productName'  : product.name,
@@ -72,7 +79,7 @@ class ProductListView(View):
                     'size'     : size.id,
                     'sizeName' : size.name
                     }
-                for size in sizes]
+                for size in Size.objects.all()]
 
         return JsonResponse({'products': total_products, 'size_categories': size_categories}, status=200)
 
@@ -125,4 +132,5 @@ class ProductDetailView(View):
                             }
                         for ask in product_size.ask_set.filter(order_status__name=ORDER_STATUS_HISTORY)]
                 } for product_size in product_sizes]
+
         return JsonResponse({'results': results}, status=200)
