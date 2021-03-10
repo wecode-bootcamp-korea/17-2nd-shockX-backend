@@ -183,3 +183,193 @@ class ProductDetailTest(TestCase):
             }
         )
         self.assertEqual(response.status_code, 404)
+
+class ProductListTest(TestCase):
+    def setUp(self):
+        Product.objects.create(
+                id            = 1,
+                name          = 'Jordan',
+                model_number  = 'test101',
+                ticker_number = 'JT101',
+                color         = 'black',
+                description   = 'this is a test',
+                retail_price  = 24,
+                release_date  = '2020-02-14'
+                )
+
+        Product.objects.create(
+                id            = 2,
+                name          = 'Yordan',
+                model_number  = 'yest101',
+                ticker_number = 'YT101',
+                color         = 'ylack',
+                description   = 'yhis is a test',
+                retail_price  = 25,
+                release_date  = '2020-03-14'
+                )
+
+        Product.objects.create(
+                id            = 3,
+                name          = 'Chordan',
+                model_number  = 'chest101',
+                ticker_number = 'CT101',
+                color         = 'clack',
+                description   = 'chis is a test',
+                retail_price  = 26,
+                release_date  = '2020-04-14'
+                )
+
+        Size.objects.create(id=1, name='10')
+        Size.objects.create(id=2, name='11')
+        ProductSize.objects.create(id=1, product_id=1, size_id=1)
+        ProductSize.objects.create(id=2, product_id=2, size_id=2)
+        ProductSize.objects.create(id=3, product_id=3, size_id=1)
+        Image.objects.create(id=1, image_url='testurl', product_id=1)
+        Image.objects.create(id=2, image_url='yesturl', product_id=2)
+        Image.objects.create(id=3, image_url='chesturl', product_id=3)
+        SellerLevel.objects.create(id=1, name='test', transaction_fee=5)
+        User.objects.create(id=1, email='test@email', name='test', seller_level_id=1)
+        User.objects.create(id=2, email='test2@email', name='test2', seller_level_id=1)
+        ShippingInformation.objects.create(id=1, name='test', country='test', primary_address='test', city='test', state='test', postal_code='101', phone_number='010', user_id=1)
+        ShippingInformation.objects.create(id=2, name='test2', country='test2', primary_address='test2', city='test2', state='test2', postal_code='102', phone_number='020', user_id=2)
+        OrderStatus.objects.create(id=1, name='current')
+        Ask.objects.create(id=1, user_id=1, product_size_id=1, price=240, expiration_date='2020-03-14', order_status_id=1, shipping_information_id=1)
+        Ask.objects.create(id=2, user_id=2, product_size_id=2, price=340, expiration_date='2020-03-15', order_status_id=1, shipping_information_id=2)
+        Ask.objects.create(id=3, user_id=2, product_size_id=3, price=440, expiration_date='2020-03-16', order_status_id=1, shipping_information_id=2)
+        
+
+    def tearDown(self):
+        Product.objects.all().delete()
+        ProductSize.objects.all().delete()
+        Size.objects.all().delete()
+        Image.objects.all().delete()
+        SellerLevel.objects.all().delete()
+        User.objects.all().delete()
+        ShippingInformation.objects.all().delete()
+        OrderStatus.objects.all().delete()
+        Ask.objects.all().delete()
+
+    def test_product_list_all_products_get_success(self):
+        client = Client()
+        response = client.get('/product', {'limit':'20'})
+        self.assertEqual(response.json(),
+                {
+                    'products' : [
+                        {
+                            'productId'    : 1,
+                            'productName'  : 'Jordan',
+                            'productImage' : 'testurl',
+                            'price'        : 240,
+                            },
+                        {
+                            'productId'    : 2,
+                            'productName'  : 'Yordan',
+                            'productImage' : 'yesturl',
+                            'price'        : 340,
+                            },
+                        {
+                            'productId'    : 3,
+                            'productName'  : 'Chordan',
+                            'productImage' : 'chesturl',
+                            'price'        : 440,
+                            }
+                        ],
+                    'size_categories' : [
+                        {
+                            'size'     : 1,
+                            'sizeName' : '10'
+                            },
+                        {
+                            'size'     : 2,
+                            'sizeName' : '11'
+                            }
+                        ]
+                    }
+                )
+        self.assertEqual(response.status_code, 200)
+
+    def test_product_list_no_size_lowest_price_get_success(self):
+        client = Client()
+        response = client.get('/product', {'limit':'20', 'lowest':'300'})
+        self.assertEqual(response.json(),
+                {
+                    'products' : [
+                        {
+                            'productId'    : 1,
+                            'productName'  : 'Jordan',
+                            'productImage' : 'testurl',
+                            'price'        : 240,
+                            }
+                        ],
+                    'size_categories' : [
+                        {
+                            'size'     : 1,
+                            'sizeName' : '10'
+                            },
+                        {
+                            'size'     : 2,
+                            'sizeName' : '11'
+                            }
+                        ]
+                    }
+                )
+        self.assertEqual(response.status_code, 200)
+
+    def test_product_list_no_size_highest_lowest_price_get_success(self):
+        client = Client()
+        response = client.get('/product', {'limit':'20', 'lowest':'300', 'highest':'400'})
+        self.assertEqual(response.json(),
+                {
+                    'products' : [
+                        {
+                            'productId'    : 2,
+                            'productName'  : 'Yordan',
+                            'productImage' : 'yesturl',
+                            'price'        : 340,
+                            }
+                        ],
+                    'size_categories' : [
+                        {
+                            'size'     : 1,
+                            'sizeName' : '10'
+                            },
+                        {
+                            'size'     : 2,
+                            'sizeName' : '11'
+                            }
+                        ]
+                    }
+                )
+        self.assertEqual(response.status_code, 200)
+
+    def test_product_list_size_highest_price_get_success(self):
+        client = Client()
+        response = client.get('/product', {'limit':'20', 'size':'1', 'highest':'400'})
+        self.assertEqual(response.json(),
+                {
+                    'products' : [
+                        {
+                            'productId'    : 3,
+                            'productName'  : 'Chordan',
+                            'productImage' : 'chesturl',
+                            'price'        : 440,
+                            }
+                        ],
+                    'size_categories' : [
+                        {
+                            'size'     : 1,
+                            'sizeName' : '10'
+                            },
+                        {
+                            'size'     : 2,
+                            'sizeName' : '11'
+                            }
+                        ]
+                    }
+                )
+        self.assertEqual(response.status_code, 200)
+
+    def test_product_list_all_products_not_found(self):
+        client = Client()
+        response = client.get('/products', {'limit':'20'})
+        self.assertEqual(response.status_code, 404)
