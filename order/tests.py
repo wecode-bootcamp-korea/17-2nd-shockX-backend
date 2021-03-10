@@ -436,7 +436,7 @@ class BuyTest(TestCase):
         user = User.objects.get(email=payload['email'])
         
         data = {
-                "isBid"          : "0",
+            "isBid"          : "0",
             "price"          : self.ask.price,
             "name"           : "sua",
             "country"        : "South Korea",

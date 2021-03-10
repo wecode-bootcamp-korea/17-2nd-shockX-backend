@@ -134,3 +134,6 @@ CORS_ALLOW_HEADERS = (
     'x-requested-with',
 )
 
+#REMOVE_APPEND_SLASH_WARNING
+APPEND_SLASH = False
+

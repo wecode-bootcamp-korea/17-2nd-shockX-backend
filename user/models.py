@@ -33,3 +33,11 @@ class ShippingInformation(models.Model):
     class Meta:
         db_table = 'shipping_informations'
 
+class Portfolio(models.Model):
+    user           = models.ForeignKey('User', on_delete=models.CASCADE)
+    product_size   = models.ForeignKey('product.ProductSize', on_delete=models.CASCADE)
+    purchase_date  = models.DateField()
+    purchase_price = models.DecimalField(max_digits=10, decimal_places=2)
+
+    class Meta:
+        db_table = 'portfolios'
