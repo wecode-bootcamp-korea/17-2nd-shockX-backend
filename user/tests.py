@@ -1,5 +1,6 @@
 import json
 import jwt
+import bcrypt
 from datetime import datetime
 
 from django.test   import TestCase, Client
@@ -276,3 +277,69 @@ class PortfolioTest(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertEqual(response.json(), {'message':'PRODUCT_SIZE_DOES_NOT_EXIST'})
 
+class SocialLoginTest(TestCase):
+
+    @classmethod
+    def setUpTestData(cls):
+        User.objects.create(
+            email = 'binoooo@gmail.com',
+            name = 'binoooo',
+        )
+
+    @patch('user.views.requests')
+    def test_signup_post_pass(self, mock_requests):  
+        client = Client()
+
+        class MockedResponse:
+            def json(self):
+                return {
+                    'kakao_account' : {
+                        'email' : 'binoooo@gmail.com',
+                        'profile' : {'nickname' : 'binoooo'}
+                    }
+                }
+
+        mock_requests.get = MagicMock(return_value = MockedResponse())
+        headers = {'HTTP_Authorization': 'fake_token'}
+        response = client.post('/user/kakao', content_type='applications/json', **headers)
+
+        self.assertEqual(response.status_code, 200)
+
+    @patch('user.views.requests')
+    def test_signin_post_pass(self, mock_requests):  
+        client = Client()
+
+        class MockedResponse:
+            def json(self):
+                return {
+                    'kakao_account' : {
+                        'email' : 'binooooo@gmail.com',
+                        'profile' : {'nickname' : 'binooooo'}
+                    }
+                }
+
+        mock_requests.get = MagicMock(return_value = MockedResponse())
+        headers = {'HTTP_Authorization': 'fake_token'}
+        response = client.post('/user/kakao', content_type='applications/json', **headers)
+
+        self.assertEqual(response.status_code, 201)
+
+    @patch('user.views.requests')
+    def test_signup_email_key_error(self, mock_requests):  
+        client = Client()
+
+        class MockedResponse:
+            def json(self):
+                return {
+                    'kakao' : {
+                        'email' : 'binoooo@gmail.com',
+                        'profile' : {'nickname' : 'binoooo'}
+                    }
+                }
+
+        mock_requests.get = MagicMock(return_value = MockedResponse())
+        headers = {'HTTP_Authorization': 'fake_token'}
+        response = client.post('/user/kakao', content_type='applications/json', **headers)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {'message': 'KEY_ERROR'})
