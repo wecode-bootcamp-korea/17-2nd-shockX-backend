@@ -7,22 +7,15 @@ from django.test      import TestCase, Client
 
 from .models          import Product, Image, Size, ProductSize 
 from order.models     import Ask, Bid, OrderStatus, ExpirationType
-from user.models      import User, SellerLevel, ShippingInformation
+from user.models      import User, ShippingInformation
 
 client = Client()
 class ProductDetailTest(TestCase):
     def setUp(self):
-        SellerLevel.objects.create(
-            id              = 1,
-            name            = '1',
-            transaction_fee = 9.5
-        )
-
         User.objects.create(
             id              = 1,
             name            = 'hyeyoon',
             email           = 'hyeyoon@gmail.com',
-            seller_level_id = 1
         )
 
         ShippingInformation.objects.create(
@@ -139,7 +132,6 @@ class ProductDetailTest(TestCase):
 
     def tearDown(self):
         User.objects.all().delete()
-        SellerLevel.objects.all().delete()
         ShippingInformation.objects.all().delete()
         Product.objects.all().delete()
         Size.objects.all().delete()
@@ -227,9 +219,8 @@ class ProductListTest(TestCase):
         Image.objects.create(id=1, image_url='testurl', product_id=1)
         Image.objects.create(id=2, image_url='yesturl', product_id=2)
         Image.objects.create(id=3, image_url='chesturl', product_id=3)
-        SellerLevel.objects.create(id=1, name='test', transaction_fee=5)
-        User.objects.create(id=1, email='test@email', name='test', seller_level_id=1)
-        User.objects.create(id=2, email='test2@email', name='test2', seller_level_id=1)
+        User.objects.create(id=1, email='test@email', name='test')
+        User.objects.create(id=2, email='test2@email', name='test2')
         ShippingInformation.objects.create(id=1, name='test', country='test', primary_address='test', city='test', state='test', postal_code='101', phone_number='010', user_id=1)
         ShippingInformation.objects.create(id=2, name='test2', country='test2', primary_address='test2', city='test2', state='test2', postal_code='102', phone_number='020', user_id=2)
         OrderStatus.objects.create(id=1, name='current')
@@ -243,7 +234,6 @@ class ProductListTest(TestCase):
         ProductSize.objects.all().delete()
         Size.objects.all().delete()
         Image.objects.all().delete()
-        SellerLevel.objects.all().delete()
         User.objects.all().delete()
         ShippingInformation.objects.all().delete()
         OrderStatus.objects.all().delete()

@@ -6,7 +6,7 @@ from django.views import View
 from django.db    import transaction
 
 from user.models    import User, ShippingInformation
-from product.models import ProductSize
+from product.models import ProductSize, Product, Size, Image
 from order.models   import Ask, Bid, OrderStatus, Order
 from utils          import login_decorator
 
@@ -218,7 +218,7 @@ class SellView(View):
                             ORDER_STATUS_CURRENT, price = price).order_by('created_at').first()
             order_status_pending = OrderStatus.objects.get(name = ORDER_STATUS_PENDING)
             order_status_current = OrderStatus.objects.get(name = ORDER_STATUS_CURRENT)
-            date         = timezone.localtime() - timedelta(days=int(date))
+            date         = datetime.now() - timedelta(days=int(date))
 
             with transaction.atomic():
                 if bool(int(is_ask)):
