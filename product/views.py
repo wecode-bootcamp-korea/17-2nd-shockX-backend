@@ -93,6 +93,7 @@ class ProductDetailView(View):
         sizes         = Size.objects.filter(productsize__product__id=product.id)
 
         results = {
+                'product_id'     : product.id,
                 'product_name'   : product.name,
                 'product_ticker' : product.ticker_number,
                 'color'          : product.color,
@@ -128,7 +129,8 @@ class ProductDetailView(View):
                     [
                         {
                             'sale_price'     : int(ask.price),
-                            'date_time'      : ask.matched_at.strftime('%Y-%m-%d')
+                            'date_time'      : ask.matched_at.strftime('%Y-%m-%d'),
+                            'time'           : ask.matched_at.strftime('%H:%m')
                             }
                         for ask in product_size.ask_set.filter(order_status__name=ORDER_STATUS_HISTORY)]
                 } for product_size in product_sizes]
