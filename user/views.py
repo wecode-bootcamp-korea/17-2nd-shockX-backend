@@ -1,14 +1,17 @@
 import json
 import calendar
-from datetime import datetime
+import jwt
+import requests
+from datetime         import datetime
 
 from django.http      import JsonResponse
 from django.views     import View
 from django.db.models import Avg
 
-from user.models    import Portfolio
-from product.models import ProductSize
-from user.utils     import login_decorator
+from product.models   import ProductSize
+from user.utils       import login_decorator
+from .models          import User, ShippingInformation, SellerLevel, Portfolio
+from my_settings      import ALGORITHM, SECRET_KEY
 
 ORDER_STATUS_HISTORY = 'history'
 
@@ -62,4 +65,28 @@ class PortfolioView(View):
 
         return JsonResponse({'message':'SUCCESS'}, status=201)
 
+class KakaoSocialLogin(View):
+    def post(self, request):
+        try:
+            access_token = request.headers["Authorization"]
+            headers      = ({'Authorization' : f"Bearer {access_token}"})
+            url          = "https://kapi.kakao.com/v2/user/me"
+            response     = requests.get(url, headers=headers)
+            user         = response.json()
 
+            if User.objects.filter(email = user['kakao_account']['email']).exists(): 
+                user_info     = User.objects.get(email=user['kakao_account']['email'])
+                encoded_jwt   = jwt.encode({'id': user_info.id}, SECRET_KEY, algorithm=ALGORITHM)
+
+                return JsonResponse({'access_token' : encoded_jwt}, status = 200)            
+            
+            social_user = User.objects.create(
+                    email = user['kakao_account']['email'],
+                    name  = user['kakao_account']['profile']['nickname']
+            )
+            encode_jwt    = jwt.encode({'id': social_user.id}, SECRET_KEY, algorithm=ALGORITHM)
+
+            return JsonResponse({'message' : 'SUCCESS','access_token' : encode_jwt}, status = 201)            
+
+        except KeyError:
+            return JsonResponse({'message': 'KEY_ERROR'}, status=400)
