@@ -85,7 +85,6 @@ class BuyView(View):
                 return JsonResponse({'message':'KEY_ERROR'}, status=400)
 
             product_size = ProductSize.objects.get(product_id=product_id, size_id=size_id)
-            
             with transaction.atomic():
                 shipping_information, created = ShippingInformation.objects.get_or_create(
                     user              = user,
@@ -132,11 +131,11 @@ class BuyView(View):
 
                 bid.order_number = datetime.now().strftime('B' + '%y%m%d' + str(bid.id).zfill(ORDER_NUMBER_LENGTH))
                 bid.save()
-                
-                if not product_size.ask_set.filter(price=price, order_status__name=ORDER_STATUS_CURRENT).exists():
+
+                if not product_size.ask_set.filter(order_status__name=ORDER_STATUS_CURRENT).exists():
                     raise ProductSize.DoesNotExist
 
-                lowest_ask  = product_size.ask_set.filter(price=price,  order_status__name=ORDER_STATUS_CURRENT).order_by('created_at').first()
+                lowest_ask  = product_size.ask_set.filter(order_status__name=ORDER_STATUS_CURRENT).order_by('price').first()
 
                 lowest_ask.order_status = order_status_pending
                 lowest_ask.matched_at   = datetime.now()
@@ -212,41 +211,37 @@ class SellView(View):
             if not(is_ask == '0' or is_ask == '1'):
                 return JsonResponse({'message':'INVALID_VALUE'})
 
-            product      = Product.objects.get(id = product_id)
-            product_size = ProductSize.objects.get(product_id = product_id, size_id = size_id)
-            highest_bid  = Bid.objects.filter(product_size = product_size, order_status__name =\
-                            ORDER_STATUS_CURRENT, price = price).order_by('created_at').first()
+            product              = Product.objects.get(id = product_id)
+            product_size         = ProductSize.objects.get(product_id = product_id, size_id = size_id)
+            highest_bid          = Bid.objects.filter(product_size = product_size, order_status__name =\
+                    ORDER_STATUS_CURRENT).order_by('-price').first()
             order_status_pending = OrderStatus.objects.get(name = ORDER_STATUS_PENDING)
             order_status_current = OrderStatus.objects.get(name = ORDER_STATUS_CURRENT)
-            date         = datetime.now() - timedelta(days=int(date))
+            date                 = datetime.now() - timedelta(days=int(date))
 
             with transaction.atomic():
+                shippinginfo, created = ShippingInformation.objects.get_or_create(
+                        user_id           = user.id,
+                        name              = data['name'],
+                        country           = data['country'],
+                        primary_address   = data['primaryAddress'],
+                        secondary_address = data.get('secondaryAddress'),
+                        city              = data['city'],
+                        state             = data.get('state'),
+                        postal_code       = data['postalCode'],
+                        phone_number      = data['phoneNumber'],
+                )
+
                 if bool(int(is_ask)):
                     if not date:
                         raise KeyError 
 
-                if not ShippingInformation.objects.filter(user_id = user.id).exists():
-                    ShippingInformation.objects.create(
-                            user_id           = user.id,
-                            name              = data['name'],
-                            country           = data['country'],
-                            primary_address   = data['primaryAddress'],
-                            secondary_address = data['secondaryAddress'],
-                            city              = data['city'],
-                            state             = data['state'],
-                            postal_code       = data['postalCode'],
-                            phone_number      = data['phoneNumber'],
-                    )
-
-                shippinginfo = ShippingInformation.objects.filter(user_id = user.id).last()
-
-                if is_ask:
-                    Ask.objects.get_or_create(
-                            user                = user,
-                            product_size        = product_size,
-                            price               = price,
-                            expiration_date     = date,
-                            order_status        = order_status_current,
+                    Ask.objects.create(
+                            user                 = user,
+                            product_size         = product_size,
+                            price                = price,
+                            expiration_date      = date,
+                            order_status         = order_status_current,
                             shipping_information = shippinginfo,
                     )
 
@@ -258,18 +253,22 @@ class SellView(View):
                     highest_bid.save()
 
                     ask = Ask.objects.create(
-                            user                = user,
-                            product_size        = product_size,
-                            price               = price,
-                            order_status        = order_status_pending,
-                            total_price         = total_price,
-                            matched_at          = datetime.now(),
+                            user                 = user,
+                            product_size         = product_size,
+                            price                = price,
+                            order_status         = order_status_pending,
+                            total_price          = total_price,
+                            matched_at           = datetime.now(),
                             shipping_information = shippinginfo,
-                    )
+                            )
+
+                    ask.order_number = datetime.now().strftime('A%y%m%d' + str(ask.id).zfill(5))
+                    ask.save()
+
                     Order.objects.create(
-                            bid_id = highest_bid,
-                            ask_id = ask,
-                    )
+                            bid = highest_bid,
+                            ask = ask,
+                            )
 
                 return JsonResponse({'message':'SUCCESS'}, status=201)
 
