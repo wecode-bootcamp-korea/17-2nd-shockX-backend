@@ -6,7 +6,7 @@ from datetime import datetime
 from django.test   import TestCase, Client
 from unittest.mock import patch, MagicMock
 
-from user.models    import SellerLevel, User, ShippingInformation, Portfolio
+from user.models    import User, ShippingInformation, Portfolio
 from product.models import Product, Size, ProductSize, Image
 from order.models   import Bid, Ask, Order, OrderStatus
 from my_settings    import SECRET_KEY, ALGORITHM
@@ -20,14 +20,9 @@ client = Client()
 class PortfolioTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        seller_level = SellerLevel.objects.create(
-            name            = '1',
-            transaction_fee = 9.5
-        )
         user = User.objects.create(
             email        = 'shockx@wecode.com',
             name         = 'shocking',
-            seller_level = seller_level
         )
         cls.product = Product.objects.create(
             id            = 1,
@@ -103,7 +98,6 @@ class PortfolioTest(TestCase):
         cls.token = jwt.encode({'email':user.email}, SECRET_KEY, algorithm=ALGORITHM)
     
     def tearDown(self):
-        SellerLevel.objects.all().delete()
         User.objects.all().delete()
         Product.objects.all().delete()
         Size.objects.all().delete()

@@ -101,7 +101,7 @@ class SellTest(TestCase):
 
         response = client.get(f'/order/sell/{self.product.id}?size={self.size.id}', **headers)
 
-        self.assertEqual(response.json()['data']['product']['id'], 1)
+        self.assertEqual(response.json()['data']['product']['id'], 2)
         self.assertEqual(response.json()['data']['product']['name'], "Jordan")
         self.assertEqual(response.json()['data']['product']['lowestAsk'], "100.00")
         self.assertEqual(response.json()['data']['product']['highestBid'], "100.00")
@@ -145,7 +145,7 @@ class SellTest(TestCase):
         user = User.objects.get(email=payload['email'])
 
         data = {
-            "isAsk"            : "True",
+            "isAsk"            : "1",
             "price"            : self.bid.price,
             "name"             : "bongbong",
             "country"          : "InSideOut",
@@ -170,7 +170,7 @@ class SellTest(TestCase):
         user = User.objects.get(email=payload['email'])
 
         data = {
-            "isAsk"            : "True",
+            "isAsk"            : "1",
             "price"            : self.bid.price,
             "name"             : "bongbong",
             "country"          : "InSideOut",
@@ -212,7 +212,7 @@ class SellTest(TestCase):
         user = User.objects.get(email=payload['email'])
 
         data = {
-            "price"            : self.ask.price,
+            "price"            : self.bid.price,
             "name"             : "sua",
             "country"          : "South Korea",
             "primaryAddress"   : "Gangnam-gu",
@@ -669,15 +669,9 @@ class BuyStatusTest(TestCase):
     maxDiff = None
     @classmethod
     def setUpTestData(cls):
-        SellerLevel.objects.create(
-            id              = 1,
-            name            = '1',
-            transaction_fee = 9.5
-        )
         user = User.objects.create(
             email           = 'shockx@wecode.com',
             name            = 'shocking',
-            seller_level_id = 1
         )
         product = Product.objects.create(
             name          = 'Yordan',
@@ -767,7 +761,6 @@ class BuyStatusTest(TestCase):
         cls.token = jwt.encode({'email':user.email}, SECRET_KEY, algorithm=ALGORITHM)
 
     def tearDown(self):
-        SellerLevel.objects.all().delete()
         User.objects.all().delete()
         Product.objects.all().delete()
         Size.objects.all().delete()
@@ -818,16 +811,10 @@ class SellStatusTest(TestCase):
     maxDiff = None
     @classmethod
     def setUpTestData(cls):
-        SellerLevel.objects.create(
-            id              = 1,
-            name            = '1',
-            transaction_fee = 9.5
-        )
         user = User.objects.create(
             id              = 1,
             email           = 'shockx@wecode.com',
             name            = 'shocking',
-            seller_level_id = 1
         )
         product = Product.objects.create(
             id            = 1,
@@ -931,7 +918,6 @@ class SellStatusTest(TestCase):
         cls.token = jwt.encode({'email':user.email}, SECRET_KEY, algorithm=ALGORITHM)
 
     def tearDown(self):
-        SellerLevel.objects.all().delete()
         User.objects.all().delete()
         Product.objects.all().delete()
         Size.objects.all().delete()

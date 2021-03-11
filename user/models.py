@@ -9,13 +9,6 @@ class User(models.Model):
     class Meta:
         db_table = 'users'
 
-class SellerLevel(models.Model):
-    name            = models.CharField(max_length=20)
-    transaction_fee = models.DecimalField(max_digits=10, decimal_places=2)
-
-    class Meta:
-        db_table = 'seller_levels'
-
 class ShippingInformation(models.Model):
     name              = models.CharField(max_length=50)
     country           = models.CharField(max_length=50)
