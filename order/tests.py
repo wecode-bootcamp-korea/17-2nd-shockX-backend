@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from django.test    import TestCase, Client
 from unittest.mock  import patch, MagicMock
 
-from user.models    import SellerLevel, User, ShippingInformation
+from user.models    import User, ShippingInformation
 from product.models import Product, Size, ProductSize, Image
 from order.models   import Ask, Order, OrderStatus, Bid
 from my_settings    import SECRET_KEY, ALGORITHM
@@ -18,15 +18,9 @@ client = Client()
 class SellTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        seller_level = SellerLevel.objects.create(
-            name            = '1',
-            transaction_fee = 9.5
-        )
-
         user = User.objects.create(
             email        = 'binogood68@gmail.com',
             name         = 'binogood',
-            seller_level = seller_level
         )
 
         cls.product = Product.objects.create(
@@ -92,7 +86,6 @@ class SellTest(TestCase):
         cls.token = jwt.encode({'email':user.email}, SECRET_KEY, algorithm=ALGORITHM)
 
     def tearDown(self):
-        SellerLevel.objects.all().delete()
         User.objects.all().delete()
         Product.objects.all().delete()
         Size.objects.all().delete()
@@ -240,14 +233,9 @@ class SellTest(TestCase):
 class BuyTest(TestCase):
     @classmethod
     def setUpTestData(cls):
-        seller_level = SellerLevel.objects.create(
-            name            = '1',
-            transaction_fee = 9.5
-        )
         user = User.objects.create(
             email        = 'shockx@wecode.com',
             name         = 'shocking',
-            seller_level = seller_level
         )
         cls.product = Product.objects.create(
             name          = 'Yordan',
@@ -304,7 +292,6 @@ class BuyTest(TestCase):
         cls.token = jwt.encode({'email':user.email}, SECRET_KEY, algorithm=ALGORITHM)
 
     def tearDown(self):
-        SellerLevel.objects.all().delete()
         User.objects.all().delete()
         Product.objects.all().delete()
         Size.objects.all().delete()
