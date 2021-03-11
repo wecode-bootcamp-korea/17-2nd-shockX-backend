@@ -8,7 +8,7 @@ from django.db    import transaction
 from user.models    import User, ShippingInformation
 from product.models import ProductSize
 from order.models   import Ask, Bid, OrderStatus, Order
-from user.utils     import login_decorator
+from utils          import login_decorator
 
 ORDER_STATUS_CURRENT = 'current'
 ORDER_STATUS_PENDING = 'pending'

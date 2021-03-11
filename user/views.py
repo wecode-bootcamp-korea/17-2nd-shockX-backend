@@ -9,9 +9,9 @@ from django.views     import View
 from django.db.models import Avg
 
 from product.models   import ProductSize
-from user.utils       import login_decorator
-from .models          import User, ShippingInformation, SellerLevel, Portfolio
+from .models          import User, ShippingInformation, Portfolio
 from my_settings      import ALGORITHM, SECRET_KEY
+from utils            import login_decorator
 
 ORDER_STATUS_HISTORY = 'history'
 
@@ -78,15 +78,15 @@ class KakaoSocialLogin(View):
                 user_info     = User.objects.get(email=user['kakao_account']['email'])
                 encoded_jwt   = jwt.encode({'id': user_info.id}, SECRET_KEY, algorithm=ALGORITHM)
 
-                return JsonResponse({'access_token' : encoded_jwt}, status = 200)            
+                return JsonResponse({'user_name': user_info.name,'access_token' : encoded_jwt}, status = 200)            
             
-            social_user = User.objects.create(
+            user_info = User.objects.create(
                     email = user['kakao_account']['email'],
                     name  = user['kakao_account']['profile']['nickname']
             )
-            encode_jwt    = jwt.encode({'id': social_user.id}, SECRET_KEY, algorithm=ALGORITHM)
+            encode_jwt    = jwt.encode({'id': user_info.id}, SECRET_KEY, algorithm=ALGORITHM)
 
-            return JsonResponse({'message' : 'SUCCESS','access_token' : encode_jwt}, status = 201)            
+            return JsonResponse({'user_name' : user_info.name,'access_token' : encode_jwt}, status = 201)            
 
         except KeyError:
             return JsonResponse({'message': 'KEY_ERROR'}, status=400)

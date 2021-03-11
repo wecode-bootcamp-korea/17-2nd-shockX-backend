@@ -5,7 +5,6 @@ class User(models.Model):
     name            = models.CharField(max_length=50)
     created_at      = models.DateTimeField(auto_now_add=True)
     updated_at      = models.DateTimeField(auto_now=True)
-    seller_level    = models.ForeignKey('SellerLevel', on_delete=models.CASCADE, default=1)
 
     class Meta:
         db_table = 'users'
